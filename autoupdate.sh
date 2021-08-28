@@ -20,10 +20,10 @@ board_id=$(cat /etc/board.json | jsonfilter -e '@["model"].id' | sed 's/friendly
 mount -t tmpfs -o remount,size=850m tmpfs /tmp
 rm -rf /tmp/upg && mkdir /tmp/upg && cd /tmp/upg
 set +e
-wget https://ghproxy.com/https://github.com/klever1988/nanopi-openwrt/releases/download/$(date +%Y-%m-%d)/$board_id$ver.img.gz -O- | gzip -dc > $board_id.img
+wget https://ghproxy.com/https://github.com/klever1988/nanopi-openwrt/releases/latest/download/$board_id$ver.img.gz -O- | gzip -dc > $board_id.img
 if [ $? -eq 0 ]; then
-	wget https://ghproxy.com/https://github.com/klever1988/nanopi-openwrt/releases/download/$(date +%Y-%m-%d)/$board_id$ver.img.md5 -O md5sum.txt
-	echo -e '\e[92m今天固件已下载，准备解压\e[0m'
+	wget https://ghproxy.com/https://github.com/klever1988/nanopi-openwrt/releases/latest/download/$board_id$ver.img.md5 -O md5sum.txt
+	echo -e '\e[92m最新固件已下载，准备解压\e[0m'
 else
 	echo -e '\e[91m今天的固件还没更新，尝试下载昨天的固件\e[0m'
 	wget https://ghproxy.com/https://github.com/klever1988/nanopi-openwrt/releases/download/$(date -d "@$(( $(busybox date +%s) - 432000))" +%Y-%m-%d)/$board_id$ver.img.gz -O- | gzip -dc > $board_id.img
