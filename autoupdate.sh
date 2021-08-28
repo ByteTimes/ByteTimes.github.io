@@ -67,7 +67,7 @@ echo -e '\e[92m备份文件已经写入，移除挂载\e[0m'
 cd /tmp/upg
 umount /mnt/img
 
-sleep 5
+sleep 10
 umount ${lodev}p1
 umount ${lodev}p2
 e2fsck -yf ${lodev}p2 || true
