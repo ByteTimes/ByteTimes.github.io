@@ -558,8 +558,61 @@ Set_Bt_Panel(){
 Set_Firewall(){
 	sshPort=$(cat /etc/ssh/sshd_config | grep 'Port '|awk '{print $2}')
 	if [ "${PM}" = "apt-get" ]; then
-		apt-get install -y nftables
-		
+		apt-get install -y ufw
+		if [ -f "/usr/sbin/ufw" ];then
+			ufw allow 20/tcp
+			ufw allow 21/tcp
+			ufw allow 22/tcp
+			ufw allow 80/tcp
+			ufw allow 888/tcp
+			ufw allow ${panelPort}/tcp
+			ufw allow ${sshPort}/tcp
+			ufw allow 39000:40000/tcp
+			ufw_status=`ufw status`
+			echo y|ufw enable
+			ufw default deny
+			ufw reload
+		fi
+	else
+		if [ -f "/etc/init.d/iptables" ];then
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 20 -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 21 -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport ${panelPort} -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport ${sshPort} -j ACCEPT
+			iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 39000:40000 -j ACCEPT
+			#iptables -I INPUT -p tcp -m state --state NEW -m udp --dport 39000:40000 -j ACCEPT
+			iptables -A INPUT -p icmp --icmp-type any -j ACCEPT
+			iptables -A INPUT -s localhost -d localhost -j ACCEPT
+			iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+			iptables -P INPUT DROP
+			service iptables save
+			sed -i "s#IPTABLES_MODULES=\"\"#IPTABLES_MODULES=\"ip_conntrack_netbios_ns ip_conntrack_ftp ip_nat_ftp\"#" /etc/sysconfig/iptables-config
+			iptables_status=$(service iptables status | grep 'not running')
+			if [ "${iptables_status}" == '' ];then
+				service iptables restart
+			fi
+		else
+			AliyunCheck=$(cat /etc/redhat-release|grep "Aliyun Linux")
+			[ "${AliyunCheck}" ] && return
+			yum install firewalld -y
+			[ "${Centos8Check}" ] && yum reinstall python3-six -y
+			systemctl enable firewalld
+			systemctl start firewalld
+			firewall-cmd --set-default-zone=public > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=20/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=21/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=22/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=80/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=${panelPort}/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=${sshPort}/tcp > /dev/null 2>&1
+			firewall-cmd --permanent --zone=public --add-port=39000-40000/tcp > /dev/null 2>&1
+			#firewall-cmd --permanent --zone=public --add-port=39000-40000/udp > /dev/null 2>&1
+			firewall-cmd --reload
+		fi
+	fi
+}
 Get_Ip_Address(){
 	getIpAddress=""
 	getIpAddress=$(curl -sS --connect-timeout 10 -m 60 https://www.bt.cn/Api/getIpAddress)
@@ -626,7 +679,6 @@ Install_Main(){
 
 	Set_Bt_Panel
 	Service_Add
-	Set_Firewall
 
 	Get_Ip_Address
 	Setup_Count ${IDC_CODE}
